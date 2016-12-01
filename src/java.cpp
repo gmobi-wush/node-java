@@ -14,6 +14,8 @@
 
 #define DYNAMIC_PROXY_JS_ERROR -4
 
+bool isBufferFlag = false;
+
 long v8ThreadId;
 
 /*static*/ Nan::Persistent<v8::FunctionTemplate> Java::s_ct;
@@ -64,6 +66,7 @@ long my_getThreadId() {
   Nan::SetPrototypeMethod(t, "getStaticFieldValue", getStaticFieldValue);
   Nan::SetPrototypeMethod(t, "setStaticFieldValue", setStaticFieldValue);
   Nan::SetPrototypeMethod(t, "instanceOf", instanceOf);
+	Nan::SetPrototypeMethod(t, "isBuffer", isBuffer);
 
   target->Set(Nan::New<v8::String>("Java").ToLocalChecked(), t->GetFunction());
 
@@ -740,15 +743,44 @@ NAN_METHOD(Java::newArray) {
 
   // argument - array
   if(info.Length() < argsStart+1 || !info[argsStart]->IsArray()) {
-    std::ostringstream errStr;
-    errStr << "Argument " << (argsStart+1) << " must be an array";
-    return Nan::ThrowError(Nan::TypeError(errStr.str().c_str()));
+		if (strcmp(className.c_str(), "byte") == 0) {
+			// argument - buffer
+			if (info.Length() != 2 ) {
+				std::ostringstream errStr;
+		    errStr << "There should be two arguments for type: \"byte\"";
+		    return Nan::ThrowError(Nan::TypeError(errStr.str().c_str()));
+			}
+			if (!info[argsStart]->IsObject()) {
+				std::ostringstream errStr;
+		    errStr << "Argument " << (argsStart+1) << " must be a single buffer for type: \"byte\"";
+		    return Nan::ThrowError(Nan::TypeError(errStr.str().c_str()));
+			}
+		} else {
+			std::ostringstream errStr;
+	    errStr << "Argument " << (argsStart+1) << " must be an array unless the type is \"byte\"";
+	    return Nan::ThrowError(Nan::TypeError(errStr.str().c_str()));
+		}
   }
-  v8::Local<v8::Array> arrayObj = v8::Local<v8::Array>::Cast(info[argsStart]);
 
-  // find class and method
-  jarray results;
-  if(strcmp(className.c_str(), "byte") == 0) {
+	// find class and method
+	jarray results;
+
+  if(strcmp(className.c_str(), "byte") == 0 & !info[argsStart]->IsArray()) {
+		v8::Local<v8::Object> v = v8::Local<v8::Object>::Cast(info[argsStart]);
+		const char *b = node::Buffer::Data(v);
+		size_t length = node::Buffer::Length(v);
+    results = env->NewByteArray(length);
+		jbyte *bytes = env->GetByteArrayElements((jbyteArray) results, 0);
+		for(size_t i = 0;i < length;i++) {
+			bytes[i] = b[i];
+		}
+		env->ReleaseByteArrayElements((jbyteArray) results, bytes, 0);
+    info.GetReturnValue().Set(JavaObject::New(self, results));
+		return;
+  }
+
+	v8::Local<v8::Array> arrayObj = v8::Local<v8::Array>::Cast(info[argsStart]);
+	if(strcmp(className.c_str(), "byte") == 0) {
     results = env->NewByteArray(arrayObj->Length());
     for(uint32_t i=0; i<arrayObj->Length(); i++) {
       v8::Local<v8::Value> item = arrayObj->Get(i);
@@ -761,7 +793,6 @@ NAN_METHOD(Java::newArray) {
       env->SetByteArrayRegion((jbyteArray)results, i, 1, byteValues);
     }
   }
-
   else if(strcmp(className.c_str(), "char") == 0) {
     results = env->NewCharArray(arrayObj->Length());
     for(uint32_t i=0; i<arrayObj->Length(); i++) {
@@ -1191,6 +1222,30 @@ NAN_METHOD(Java::instanceOf) {
 
   jboolean res = env->IsInstanceOf(instance, clazz);
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(res));
+}
+
+NAN_METHOD(Java::isBuffer) {
+	Nan::HandleScope scope;
+  Java* self = Nan::ObjectWrap::Unwrap<Java>(info.This());
+  v8::Local<v8::Value> ensureJvmResults = self->ensureJvm();
+  if(!ensureJvmResults->IsNull()) {
+    info.GetReturnValue().Set(ensureJvmResults);
+    return;
+  }
+  JNIEnv* env = self->getJavaEnv();
+  JavaScope javaScope(env);
+
+	if(info.Length() != 1) {
+		return Nan::ThrowError(Nan::TypeError("isBuffer only takes 1 argument"));
+	}
+
+	// argument - value
+	if(!info[0]->IsBoolean()) {
+		return Nan::ThrowError(Nan::TypeError("Argument 1 must be a boolean"));
+	}
+
+	isBufferFlag = info[0]->BooleanValue();
+	return;
 }
 
 void EIO_CallJs(uv_work_t* req) {

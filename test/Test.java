@@ -58,6 +58,14 @@ public class Test {
   public static String staticBigDecimalToString(java.math.BigDecimal bigDecimal) { return bigDecimal.toString(); }
 
   public static int staticChar(char ch) { return (int)ch; }
+
+	public static byte[] staticByteArray(byte[] arg) {
+		byte[] b = new byte[arg.length];
+    for(int i=0; i<arg.length; i++) {
+			b[i] = arg[i];
+		}
+    return b;
+	}
   public static short[] staticShortArray(Short[] arg) {
     short[] b = new short[arg.length];
     for(int i=0; i<arg.length; i++) { b[i] = arg[i]; }

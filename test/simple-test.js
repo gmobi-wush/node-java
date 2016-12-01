@@ -319,12 +319,31 @@ exports['Simple'] = nodeunit.testCase({
     test.equal(r[1], false);
     test.done();
   },
+	"set the isBufferFlag": function(test) {
+		java.isBuffer(true);
+		java.isBuffer(false);
+		test.done();
+	},
   "new byte array object": function(test) {
-    var byteArray = java.newArray("byte", [1, 2, 3]);
-    test.equal(byteArray.length, 3);
-    test.equal(byteArray[0], 1);
-    test.equal(byteArray[1], 2);
-    test.equal(byteArray[2], 3);
+		var buf = new Buffer(3);
+		buf[0] = 0;
+		buf[1] = 10;
+		buf[2] = 100;
+    var byteArray = java.newArray("byte", buf);
+		var r = java.callStaticMethodSync("Test", "staticByteArray", byteArray);
+    test.equal(r.length, buf.length);
+    test.equal(r[0], buf[0]);
+    test.equal(r[1], buf[1]);
+    test.equal(r[2], buf[2]);
+		test.ok(!(r instanceof Buffer));
+		java.isBuffer(true);
+		r = java.callStaticMethodSync("Test", "staticByteArray", byteArray);
+		test.equal(r.length, buf.length);
+    test.equal(r[0], buf[0]);
+    test.equal(r[1], buf[1]);
+    test.equal(r[2], buf[2]);
+		test.ok(r instanceof Buffer);
+		java.isBuffer(false);
     test.done();
   },
   "new boolean array": function(test) {
@@ -372,4 +391,3 @@ exports['Simple'] = nodeunit.testCase({
     test.done();
   }
 });
-

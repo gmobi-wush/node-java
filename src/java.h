@@ -56,6 +56,7 @@ private:
   static NAN_METHOD(getStaticFieldValue);
   static NAN_METHOD(setStaticFieldValue);
   static NAN_METHOD(instanceOf);
+	static NAN_METHOD(isBuffer);
   static NAN_GETTER(AccessorProhibitsOverwritingGetter);
   static NAN_SETTER(AccessorProhibitsOverwritingSetter);
   v8::Local<v8::Value> ensureJvm();
@@ -78,5 +79,7 @@ private:
   bool doAsync;
   bool doPromise;
 };
+
+extern bool isBufferFlag;
 
 #endif
