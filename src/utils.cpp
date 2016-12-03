@@ -506,20 +506,21 @@ v8::Local<v8::Value> javaArrayToV8(Java* java, JNIEnv* env, jobjectArray objArra
   jsize arraySize = env->GetArrayLength(objArray);
   //printf("array size: %d\n", arraySize);
 	if (arrayComponentType == TYPE_BYTE & isBufferFlag) {
-#if (NODE_VERSION_AT_LEAST(4, 0, 0))
-#error TODO
-#else
 		jbyte* elems = env->GetByteArrayElements((jbyteArray)objArray, 0);
+#if (NODE_VERSION_AT_LEAST(4, 0, 0))
+		v8::MaybeLocal<v8::Object> result = node::Buffer::Copy(v8::Isolate::GetCurrent(), (const char*) elems, arraySize);
+#elif (NODE_VERSION_AT_LEAST(0, 12, 0))
+		v8::Local<v8::Object> result = node::Buffer::New(v8::Isolate::GetCurrent(), (const char*) elems, arraySize);
+#else
 		node::Buffer *slowBuffer = node::Buffer::New(arraySize);
 		memcpy(node::Buffer::Data(slowBuffer), elems, arraySize);
-
 		v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
 		v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(v8::String::New("Buffer")));
 		v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, v8::Integer::New(arraySize), v8::Integer::New(0) };
 		v8::Local<v8::Object> result = bufferConstructor->NewInstance(3, constructorArgs);
+		#endif
 		env->ReleaseByteArrayElements((jbyteArray)objArray, elems, 0);
 		return result;
-#endif
 	}
 
   v8::Local<v8::Array> result = Nan::New<v8::Array>(arraySize);
