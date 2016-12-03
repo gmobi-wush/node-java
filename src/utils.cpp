@@ -509,6 +509,12 @@ v8::Local<v8::Value> javaArrayToV8(Java* java, JNIEnv* env, jobjectArray objArra
 		jbyte* elems = env->GetByteArrayElements((jbyteArray)objArray, 0);
 #if (NODE_VERSION_AT_LEAST(4, 0, 0))
 		v8::MaybeLocal<v8::Object> result = node::Buffer::Copy(v8::Isolate::GetCurrent(), (const char*) elems, arraySize);
+		if (result.IsEmpty()) {
+			std::ostringstream errStr;
+			errStr << "The buffer failed to copy data";
+			return Nan::ThrowError(errStr.str().c_str());
+		}
+		return result.ToLocalChecked();
 #elif (NODE_VERSION_AT_LEAST(0, 12, 0))
 		v8::Local<v8::Object> result = node::Buffer::New(v8::Isolate::GetCurrent(), (const char*) elems, arraySize);
 #else
