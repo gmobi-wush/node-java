@@ -508,13 +508,14 @@ v8::Local<v8::Value> javaArrayToV8(Java* java, JNIEnv* env, jobjectArray objArra
 	if (arrayComponentType == TYPE_BYTE & isBufferFlag) {
 		jbyte* elems = env->GetByteArrayElements((jbyteArray)objArray, 0);
 #if (NODE_VERSION_AT_LEAST(4, 0, 0))
-		v8::MaybeLocal<v8::Object> result = node::Buffer::Copy(v8::Isolate::GetCurrent(), (const char*) elems, arraySize);
-		if (result.IsEmpty()) {
+		v8::MaybeLocal<v8::Object> maybeResult = node::Buffer::Copy(v8::Isolate::GetCurrent(), (const char*) elems, arraySize);
+		if (maybeResult.IsEmpty()) {
 			std::ostringstream errStr;
 			errStr << "The buffer failed to copy data";
-			return Nan::ThrowError(errStr.str().c_str());
+			Nan::ThrowError(errStr.str().c_str());
+			return Nan::Null();
 		}
-		return result.ToLocalChecked();
+		v8::Local<v8::Object> result = maybeResult.ToLocalChecked();
 #elif (NODE_VERSION_AT_LEAST(0, 12, 0))
 		v8::Local<v8::Object> result = node::Buffer::New(v8::Isolate::GetCurrent(), (const char*) elems, arraySize);
 #else
@@ -524,7 +525,7 @@ v8::Local<v8::Value> javaArrayToV8(Java* java, JNIEnv* env, jobjectArray objArra
 		v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(v8::String::New("Buffer")));
 		v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, v8::Integer::New(arraySize), v8::Integer::New(0) };
 		v8::Local<v8::Object> result = bufferConstructor->NewInstance(3, constructorArgs);
-		#endif
+#endif
 		env->ReleaseByteArrayElements((jbyteArray)objArray, elems, 0);
 		return result;
 	}
